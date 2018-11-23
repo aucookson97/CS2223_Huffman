@@ -2,10 +2,11 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -21,8 +22,9 @@ public class Huffman {
 	private HashMap<String, Character> codeTableReversed;
 
 	private String inputFile;
+	private String serializeFile = "codeTable.ser";
 	
-	private void encode(String inputFile, String outputFile) {
+	public void encode(String inputFile, String outputFile) {
 		
 		this.inputFile = inputFile;
 		
@@ -73,14 +75,12 @@ public class Huffman {
 		Node root = new Node(nodes.get(0), nodes.get(1), rootValue);
 
 		createCodeTable(codeTable, root, "");
-		
 		encodeFile(outputFile);
+		serializeCodeTable();
 	}
 	
 	private void encodeFile(String outputFile) {
-		BufferedReader br = null;
 		InputStreamReader reader = null;
-		//ByteBuffer bytes;
 		String bits = "";
 		
 		try {
@@ -95,9 +95,9 @@ public class Huffman {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			if (br != null)
+			if (reader != null)
 				try {
-					br.close();
+					reader.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -125,7 +125,7 @@ public class Huffman {
 		}
 	}
 	
-	private void decode(String inputFile, String outputFile) {
+	public void decode(String inputFile, String outputFile) {
 		
 		byte[] bytes = null;
 		String bits = "";
@@ -146,9 +146,9 @@ public class Huffman {
 				}
 			}
 		}
+		deserializeCodeTable();
 		reverseCodeTable();
 		decodeBits(outputFile, bits);
-		System.out.println("Done");
 	}
 	
 	private void decodeBits(String outputFile, String bits) {
@@ -180,7 +180,6 @@ public class Huffman {
 				e.printStackTrace();
 			}
 		}	
-		System.out.println("Done");
 	}
 	
 	public void reverseCodeTable() {
@@ -203,15 +202,30 @@ public class Huffman {
 		createCodeTable(codeTable, node.getRight(), code + "1");
 	}
 	
-	private void sortArray(ArrayList<Node> nodeList) {
-		Collections.sort(nodeList, new SortByValue());
+	private void serializeCodeTable() {
+		try {
+			ObjectOutputStream stream = new ObjectOutputStream(new FileOutputStream(this.serializeFile));
+			stream.writeObject(this.codeTable);
+			stream.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
-	public static void main(String[] args) {
-		String inputFile = "huffmanTest.txt";
-		Huffman hf = new Huffman();
-		hf.encode(inputFile, "test.dat");
-		hf.decode("test.dat", "outputTest.txt");
-		
+	@SuppressWarnings("unchecked")
+	private void deserializeCodeTable() {
+		try {
+			ObjectInputStream stream = new ObjectInputStream(new FileInputStream(this.serializeFile));
+			this.codeTable = (HashMap<Character, String>) stream.readObject();
+			stream.close();
+		} catch (IOException e){
+			e.printStackTrace();
+		} catch (ClassNotFoundException c) {
+			c.printStackTrace();
+		}
+	}
+	
+	private void sortArray(ArrayList<Node> nodeList) {
+		Collections.sort(nodeList, new SortByValue());
 	}
 }
