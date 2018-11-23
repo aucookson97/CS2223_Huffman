@@ -7,6 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -129,9 +131,32 @@ public class Huffman {
 	
 	private void decode(String inputFile, String outputFile) {
 		
-		int b;
+		byte[] bytes = null;
+		long numBits = 0;
 		String bits = "";
 		int bitsRead = 0;
+		
+		try {
+			bytes = Files.readAllBytes(FileSystems.getDefault().getPath("", inputFile));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+
+		for (int i=0; i<bytes.length; i++) {
+			if (i < Long.BYTES) {
+				numBits = (numBits << 8) + (bytes[i] & 0xff);
+			} else {
+				for (int k=0; k<8;k++) {
+					String bit = Integer.toString(getBit(bytes[i], 8-k));
+					bits += bit;
+				}
+			}
+		}
+		reverseCodeTable();
+		decodeBits(outputFile, bits);
+		System.out.println("Done");
+		
 		
 		/*
 		FileInputStream stream = null;
@@ -209,8 +234,8 @@ public class Huffman {
 		}
 	}
 	
-	int getBit(int num, int k) {
-	    return (num >> k) & 1;
+	private int getBit(byte b, int k) {
+	    return (b >> k) & 1;
 	}
 	
 	private void createCodeTable(HashMap<Character, String> codeTable, Node node, String code) {
