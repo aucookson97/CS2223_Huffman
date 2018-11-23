@@ -3,3 +3,4 @@
 *.dat
 *.ser
 *.txt
+!sources.txt
