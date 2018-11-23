@@ -5,8 +5,8 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -29,19 +29,18 @@ public class Huffman {
 		charFreq = new HashMap<Character, Integer>();
 		codeTable = new HashMap<Character, String>();
 		
+		
 		BufferedReader br = null;
+		InputStreamReader stream = null;
 		try {
-			br = new BufferedReader(new FileReader(inputFile));
-			
-			String line;
-			
-			while ((line = br.readLine()) != null) {
-				for (char c : line.toCharArray()) {
-					if (charFreq.containsKey(c)) {
-						charFreq.put(c, charFreq.get(c) + 1);
-					} else {
-						charFreq.put(c,  1);
-					}
+			stream = new InputStreamReader(new FileInputStream(inputFile));
+
+			int c;
+			while ((c = stream.read()) != -1) {
+				if (charFreq.containsKey((char)c)) {
+					charFreq.put((char)c, charFreq.get((char)c) + 1);
+				} else {
+					charFreq.put((char)c,  1);
 				}
 			}
 		} catch (IOException e) {
@@ -80,20 +79,17 @@ public class Huffman {
 	
 	private void encodeFile(String outputFile) {
 		BufferedReader br = null;
-		
+		InputStreamReader reader = null;
 		//ByteBuffer bytes;
 		String bits = "";
 		
 		try {
-			br = new BufferedReader(new FileReader(inputFile));
-			
-			String line;
-			
-			while ((line = br.readLine()) != null) {
-				for (char c : line.toCharArray()) {
-					for (char b : codeTable.get(c).toCharArray()) {
-						bits += b;
-					}
+			reader = new InputStreamReader(new FileInputStream(inputFile));
+
+			int c;
+			while ((c = reader.read()) != -1) {
+				for (char b : codeTable.get((char)c).toCharArray()) {
+					bits += b;
 				}
 			}
 		} catch (IOException e) {
@@ -106,16 +102,16 @@ public class Huffman {
 					e.printStackTrace();
 				}
 		}
+		
+		byte numIgnore = (byte)(((bits.length()+7) / 8) * 8 - bits.length());
 		byte[] bytes = new BigInteger(bits, 2).toByteArray();
 		
 		FileOutputStream stream = null;
 		try {
 			stream = new FileOutputStream(outputFile);
-			long numBits = (long)(bits.length());
-			ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-			buffer.putLong(numBits);
-			stream.write(buffer.array());
+			stream.write(numIgnore);
 			stream.write(bytes);
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
@@ -132,9 +128,7 @@ public class Huffman {
 	private void decode(String inputFile, String outputFile) {
 		
 		byte[] bytes = null;
-		long numBits = 0;
 		String bits = "";
-		int bitsRead = 0;
 		
 		try {
 			bytes = Files.readAllBytes(FileSystems.getDefault().getPath("", inputFile));
@@ -142,13 +136,12 @@ public class Huffman {
 			e.printStackTrace();
 		}
 		
+		int numIgnore = bytes[0];
 
-		for (int i=0; i<bytes.length; i++) {
-			if (i < Long.BYTES) {
-				numBits = (numBits << 8) + (bytes[i] & 0xff);
-			} else {
-				for (int k=0; k<8;k++) {
-					String bit = Integer.toString(getBit(bytes[i], 8-k));
+		for (int i=1; i<bytes.length; i++) {
+			for (int k=0; k<8;k++) {
+				if (i != 1 || k >= numIgnore) {
+					String bit = Integer.toString(getBit(bytes[i], 7-k));
 					bits += bit;
 				}
 			}
@@ -156,44 +149,6 @@ public class Huffman {
 		reverseCodeTable();
 		decodeBits(outputFile, bits);
 		System.out.println("Done");
-		
-		
-		/*
-		FileInputStream stream = null;
-		try {
-			byte[] bitBuffer = new byte[8];
-			long numBits = 0;
-			stream = new FileInputStream(inputFile);
-			stream.read(bitBuffer);
-			for (int i = 0; i < bitBuffer.length; i++)
-			{
-			   numBits = (numBits << 8) + (bitBuffer[i] & 0xff);
-			}
-			boolean reading = true;
-			while ((b = stream.read()) != -1 && reading) {
-				System.out.println(b);
-				for (int i = Integer.BYTES * 8; i >= 0; i--) {
-					bits += Integer.toString(getBit(b, i));
-					if (++bitsRead > numBits) {
-						reading = false;
-						break;
-					}
-				}
-			}
-			reverseCodeTable();
-			decodeBits(outputFile, bits);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-		    try {
-		    	if (stream != null) {
-		    		stream.close();
-		    	}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		*/
 	}
 	
 	private void decodeBits(String outputFile, String bits) {
@@ -224,7 +179,8 @@ public class Huffman {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-		}		
+		}	
+		System.out.println("Done");
 	}
 	
 	public void reverseCodeTable() {
@@ -252,7 +208,7 @@ public class Huffman {
 	}
 	
 	public static void main(String[] args) {
-		String inputFile = "test2.txt";
+		String inputFile = "huffmanTest.txt";
 		Huffman hf = new Huffman();
 		hf.encode(inputFile, "test.dat");
 		hf.decode("test.dat", "outputTest.txt");
